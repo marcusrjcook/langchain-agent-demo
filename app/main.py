@@ -96,7 +96,13 @@ async def chat_stream(request: ChatRequest):
                 if kind == "on_chat_model_stream":
                     chunk = event["data"]["chunk"]
                     if hasattr(chunk, "content") and chunk.content:
-                        yield f"data: {json.dumps({'token': chunk.content})}\n\n"
+                        content = chunk.content
+                        if isinstance(content, list):
+                            text = "".join(c.get("text", "") if isinstance(c, dict) else str(c) for c in content)
+                        else:
+                            text = str(content)
+                        if text:
+                            yield f"data: {json.dumps({'token': text})}\n\n"
                 elif kind == "on_tool_start":
                     tool_name = event.get("name", "tool")
                     yield f"data: {json.dumps({'tool_start': tool_name})}\n\n"
