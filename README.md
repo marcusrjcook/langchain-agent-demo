@@ -2,7 +2,7 @@
 
 A production-pattern LangGraph ReAct agent with web search, calculator, and datetime tools. FastAPI backend with multi-turn conversation memory and SSE streaming.
 
-**Live:** [Deployed on AWS EC2](http://your-ec2-ip:8000)
+**Live:** [Deployed on AWS EC2](http://18.218.110.243:8000)
 
 ---
 
