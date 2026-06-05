@@ -1,10 +1,12 @@
 import json
 import uuid
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
@@ -23,6 +25,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 
 class ChatRequest(BaseModel):
     message: str
@@ -37,15 +42,7 @@ class ChatResponse(BaseModel):
 
 @app.get("/")
 def root():
-    return {
-        "service": "LangChain Multi-Tool Agent",
-        "endpoints": {
-            "POST /chat": "Multi-turn conversation (returns JSON)",
-            "POST /chat/stream": "Multi-turn conversation (SSE streaming)",
-            "GET /health": "Health check",
-        },
-        "tools": ["web_search", "calculator", "get_current_datetime"],
-    }
+    return FileResponse(static_dir / "index.html")
 
 
 @app.get("/health")

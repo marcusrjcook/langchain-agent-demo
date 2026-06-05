@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangChain Multi-Tool Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0f0f10;
+    color: #e8e8ed;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #1e1e22;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #0f0f10;
+  }
+  .header-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header-title { font-size: 15px; font-weight: 600; color: #f0f0f5; }
+  .header-sub { font-size: 12px; color: #6b6b7a; margin-top: 1px; }
+  .badges {
+    margin-left: auto;
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .badge {
+    font-size: 10px; font-weight: 500;
+    padding: 3px 8px; border-radius: 20px;
+    background: #1a1a20; border: 1px solid #2a2a32; color: #9090a0;
+  }
+  .badge.purple { border-color: #4c3f7a; color: #9b8fce; background: #1e1a2e; }
+  .badge.green  { border-color: #1f4a2e; color: #4ade80; background: #0f1f15; }
+
+  /* Chat area */
+  .chat { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .chat::-webkit-scrollbar { width: 4px; }
+  .chat::-webkit-scrollbar-track { background: transparent; }
+  .chat::-webkit-scrollbar-thumb { background: #2a2a32; border-radius: 4px; }
+
+  /* Welcome */
+  .welcome {
+    text-align: center; padding: 40px 20px; max-width: 480px; margin: auto;
+  }
+  .welcome-icon {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; margin: 0 auto 16px;
+  }
+  .welcome h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; color: #f0f0f5; }
+  .welcome p { font-size: 13px; color: #6b6b7a; line-height: 1.6; margin-bottom: 20px; }
+  .suggestions { display: flex; flex-direction: column; gap: 8px; }
+  .suggestion {
+    background: #1a1a20; border: 1px solid #2a2a32; border-radius: 10px;
+    padding: 10px 14px; font-size: 13px; color: #9090a0; cursor: pointer;
+    text-align: left; transition: all 0.15s;
+  }
+  .suggestion:hover { border-color: #6366f1; color: #c0c0d0; background: #1e1a2e; }
+
+  /* Messages */
+  .message { display: flex; gap: 10px; max-width: 760px; width: 100%; }
+  .message.user { align-self: flex-end; flex-direction: row-reverse; }
+  .message.assistant { align-self: flex-start; }
+
+  .avatar {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; margin-top: 2px;
+  }
+  .message.user .avatar { background: #6366f1; }
+  .message.assistant .avatar { background: #1e1e28; border: 1px solid #2a2a38; }
+
+  .bubble {
+    padding: 12px 16px; border-radius: 14px; font-size: 14px;
+    line-height: 1.6; max-width: calc(100% - 44px);
+  }
+  .message.user .bubble {
+    background: #6366f1; color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .message.assistant .bubble {
+    background: #1a1a22; border: 1px solid #2a2a32; color: #d8d8e0;
+    border-bottom-left-radius: 4px;
+  }
+
+  /* Tool chips */
+  .tool-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  .tool-chip {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px;
+    background: #1e1a2e; border: 1px solid #4c3f7a; color: #9b8fce;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .tool-chip.active { animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  /* Typing cursor */
+  .cursor {
+    display: inline-block; width: 2px; height: 14px;
+    background: #9090a0; margin-left: 2px; vertical-align: middle;
+    animation: blink 0.8s infinite;
+  }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+  /* Thinking indicator */
+  .thinking { display: flex; align-items: center; gap: 5px; color: #6b6b7a; font-size: 13px; padding: 4px 0; }
+  .dot { width: 5px; height: 5px; background: #6366f1; border-radius: 50%; animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100% { transform:scale(0.7); opacity:0.5; } 40% { transform:scale(1); opacity:1; } }
+
+  /* Input area */
+  .input-area {
+    padding: 16px 24px 20px;
+    border-top: 1px solid #1e1e22;
+    background: #0f0f10;
+  }
+  .input-wrap {
+    display: flex; align-items: flex-end; gap: 10px;
+    background: #1a1a22; border: 1px solid #2a2a32;
+    border-radius: 14px; padding: 10px 12px;
+    transition: border-color 0.15s;
+    max-width: 760px; margin: 0 auto;
+  }
+  .input-wrap:focus-within { border-color: #6366f1; }
+  textarea {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: #e8e8ed; font-family: 'Inter', sans-serif; font-size: 14px;
+    resize: none; max-height: 120px; line-height: 1.5;
+  }
+  textarea::placeholder { color: #4a4a58; }
+  .send-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: none;
+    background: #6366f1; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+    transition: all 0.15s; opacity: 0.5;
+  }
+  .send-btn.ready { opacity: 1; }
+  .send-btn:hover.ready { background: #5254cc; }
+  .send-btn svg { width: 14px; height: 14px; fill: white; }
+
+  .input-footer {
+    text-align: center; font-size: 11px; color: #3a3a48; margin-top: 8px;
+    max-width: 760px; margin: 8px auto 0;
+  }
+  .input-footer a { color: #6366f1; text-decoration: none; }
+  .input-footer a:hover { text-decoration: underline; }
+
+  /* New chat button */
+  .new-chat {
+    font-size: 12px; color: #6b6b7a; cursor: pointer;
+    background: none; border: 1px solid #2a2a32; padding: 4px 10px;
+    border-radius: 6px; margin-left: auto; transition: all 0.15s;
+  }
+  .new-chat:hover { color: #c0c0d0; border-color: #4a4a58; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">⚡</div>
+  <div>
+    <div class="header-title">LangChain Multi-Tool Agent</div>
+    <div class="header-sub">LangGraph · ReAct · Multi-turn memory · AWS EC2</div>
+  </div>
+  <div class="badges">
+    <span class="badge purple">LangChain</span>
+    <span class="badge purple">LangGraph</span>
+    <span class="badge green">Live</span>
+  </div>
+  <button class="new-chat" onclick="newChat()">New chat</button>
+</div>
+
+<div class="chat" id="chat">
+  <div class="welcome" id="welcome">
+    <div class="welcome-icon">⚡</div>
+    <h2>LangChain Multi-Tool Agent</h2>
+    <p>A LangGraph ReAct agent with web search, calculator, and datetime tools. Multi-turn conversation memory persisted via LangGraph MemorySaver checkpointer.</p>
+    <div class="suggestions">
+      <button class="suggestion" onclick="useSuggestion(this)">🔍 What are the latest developments in agentic AI?</button>
+      <button class="suggestion" onclick="useSuggestion(this)">🧮 What is the square root of 1764 times 3.14159?</button>
+      <button class="suggestion" onclick="useSuggestion(this)">🌍 What time is it right now in Tokyo, London, and New York?</button>
+      <button class="suggestion" onclick="useSuggestion(this)">🤖 Search the web for LangGraph and summarize what it is</button>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-wrap">
+    <textarea id="input" placeholder="Ask anything — the agent will search the web, calculate, or look up times as needed..." rows="1" onkeydown="handleKey(event)" oninput="handleInput(this)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="send()">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+  <div class="input-footer">
+    Built with <a href="https://github.com/marcusrjcook/langchain-agent-demo" target="_blank">LangChain + LangGraph</a> · Deployed on AWS EC2 · <a href="/docs" target="_blank">API docs</a>
+  </div>
+</div>
+
+<script>
+let threadId = crypto.randomUUID();
+let isStreaming = false;
+
+function handleInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  document.getElementById('sendBtn').classList.toggle('ready', el.value.trim().length > 0);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function useSuggestion(btn) {
+  const input = document.getElementById('input');
+  input.value = btn.textContent.replace(/^[^\s]+\s/, '');
+  input.dispatchEvent(new Event('input'));
+  send();
+}
+
+function newChat() {
+  threadId = crypto.randomUUID();
+  const chat = document.getElementById('chat');
+  chat.innerHTML = `<div class="welcome" id="welcome">
+    <div class="welcome-icon">⚡</div>
+    <h2>LangChain Multi-Tool Agent</h2>
+    <p>A LangGraph ReAct agent with web search, calculator, and datetime tools. Multi-turn conversation memory persisted via LangGraph MemorySaver checkpointer.</p>
+    <div class="suggestions">
+      <button class="suggestion" onclick="useSuggestion(this)">🔍 What are the latest developments in agentic AI?</button>
+      <button class="suggestion" onclick="useSuggestion(this)">🧮 What is the square root of 1764 times 3.14159?</button>
+      <button class="suggestion" onclick="useSuggestion(this)">🌍 What time is it right now in Tokyo, London, and New York?</button>
+      <button class="suggestion" onclick="useSuggestion(this)">🤖 Search the web for LangGraph and summarize what it is</button>
+    </div>
+  </div>`;
+}
+
+function scrollBottom() {
+  const chat = document.getElementById('chat');
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addMessage(role, content = '', tools = []) {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const chat = document.getElementById('chat');
+  const msg = document.createElement('div');
+  msg.className = `message ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = role === 'user' ? '👤' : '⚡';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+
+  if (tools.length) {
+    const chips = document.createElement('div');
+    chips.className = 'tool-chips';
+    chips.id = 'tool-chips';
+    tools.forEach(t => {
+      const chip = document.createElement('span');
+      chip.className = 'tool-chip active';
+      chip.dataset.tool = t;
+      chip.textContent = `⚙ ${t}`;
+      chips.appendChild(chip);
+    });
+    bubble.appendChild(chips);
+  }
+
+  const text = document.createElement('span');
+  text.id = 'stream-text';
+  text.textContent = content;
+  bubble.appendChild(text);
+
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  chat.appendChild(msg);
+  scrollBottom();
+  return { bubble, text };
+}
+
+async function send() {
+  if (isStreaming) return;
+  const input = document.getElementById('input');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('sendBtn').classList.remove('ready');
+  isStreaming = true;
+
+  addMessage('user', msg);
+
+  // Thinking indicator
+  const chat = document.getElementById('chat');
+  const thinking = document.createElement('div');
+  thinking.className = 'message assistant';
+  thinking.id = 'thinking';
+  thinking.innerHTML = `
+    <div class="avatar">⚡</div>
+    <div class="bubble">
+      <div class="thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>`;
+  chat.appendChild(thinking);
+  scrollBottom();
+
+  try {
+    const resp = await fetch('/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, thread_id: threadId })
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let { bubble, text } = { bubble: null, text: null };
+    let activeTools = [];
+    let initialized = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const data = JSON.parse(raw);
+
+          if (data.thread_id) { threadId = data.thread_id; continue; }
+
+          if (data.tool_start) {
+            activeTools.push(data.tool_start);
+            if (!initialized) {
+              document.getElementById('thinking')?.remove();
+              const result = addMessage('assistant', '', activeTools);
+              bubble = result.bubble; text = result.text;
+              initialized = true;
+            } else {
+              const chips = document.getElementById('tool-chips');
+              if (chips) {
+                const chip = document.createElement('span');
+                chip.className = 'tool-chip active';
+                chip.dataset.tool = data.tool_start;
+                chip.textContent = `⚙ ${data.tool_start}`;
+                chips.appendChild(chip);
+              }
+            }
+          }
+
+          if (data.tool_end) {
+            const chip = document.querySelector(`.tool-chip[data-tool="${data.tool_end}"]`);
+            if (chip) { chip.classList.remove('active'); chip.textContent = `✓ ${data.tool_end}`; }
+          }
+
+          if (data.token) {
+            if (!initialized) {
+              document.getElementById('thinking')?.remove();
+              const result = addMessage('assistant', '', []);
+              bubble = result.bubble; text = result.text;
+              initialized = true;
+            }
+            // Remove cursor if present
+            const cursor = bubble.querySelector('.cursor');
+            if (cursor) cursor.remove();
+            text.textContent += data.token;
+            // Add cursor
+            const cur = document.createElement('span');
+            cur.className = 'cursor';
+            bubble.appendChild(cur);
+            scrollBottom();
+          }
+
+          if (data.error) {
+            document.getElementById('thinking')?.remove();
+            addMessage('assistant', `Error: ${data.error}`);
+          }
+        } catch {}
+      }
+    }
+
+    // Remove cursor at end
+    bubble?.querySelector('.cursor')?.remove();
+    document.getElementById('thinking')?.remove();
+
+  } catch (err) {
+    document.getElementById('thinking')?.remove();
+    addMessage('assistant', 'Connection error. Please try again.');
+  }
+
+  isStreaming = false;
+}
+</script>
+</body>
+</html>
