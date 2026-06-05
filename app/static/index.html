@@ -281,6 +281,92 @@ body {
 }
 @keyframes cur-blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
+/* ── Home suggestions ── */
+.home-suggestions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  justify-content: center; max-width: 500px;
+}
+.suggestion {
+  font-size: 12px; font-weight: 400; color: rgba(200,190,255,0.65);
+  background: rgba(124,111,247,0.06);
+  border: 1px solid rgba(124,111,247,0.18);
+  border-radius: 20px; padding: 6px 14px;
+  cursor: pointer; transition: all 0.18s;
+  backdrop-filter: blur(8px);
+}
+.suggestion:hover {
+  background: rgba(124,111,247,0.14);
+  border-color: rgba(124,111,247,0.4);
+  color: rgba(220,210,255,0.9);
+  transform: translateY(-1px);
+}
+
+/* ── Info modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-card {
+  background: rgba(18,14,36,0.95);
+  border: 1px solid rgba(124,111,247,0.22);
+  border-radius: 20px; padding: 32px 36px;
+  max-width: 440px; width: 90vw;
+  box-shadow: 0 0 60px rgba(100,80,240,0.2), 0 24px 48px rgba(0,0,0,0.5);
+  transform: translateY(8px); transition: transform 0.25s;
+}
+.modal-overlay.open .modal-card { transform: translateY(0); }
+.modal-title {
+  font-size: 16px; font-weight: 600; color: var(--text);
+  margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+}
+.modal-title-orb {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background:
+    radial-gradient(ellipse 60% 80% at 30% 20%, rgba(140,100,255,0.9), transparent 60%),
+    radial-gradient(circle at 50% 50%, #1a0a3a, #0d0520);
+  animation: marble-rotate 8s linear infinite;
+}
+.modal-section { margin-bottom: 18px; }
+.modal-section:last-child { margin-bottom: 0; }
+.modal-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(124,111,247,0.8);
+  margin-bottom: 6px;
+}
+.modal-text {
+  font-size: 13px; line-height: 1.6; color: rgba(220,218,240,0.75);
+}
+.modal-tools {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+}
+.modal-tool-chip {
+  font-size: 11px; font-weight: 500;
+  padding: 3px 10px; border-radius: 20px;
+  background: rgba(124,111,247,0.1); border: 1px solid rgba(124,111,247,0.25);
+  color: rgba(180,170,255,0.85);
+}
+.modal-close {
+  margin-top: 24px; width: 100%;
+  background: rgba(124,111,247,0.12); border: 1px solid rgba(124,111,247,0.25);
+  color: rgba(200,195,255,0.8); border-radius: 10px;
+  padding: 9px; font-size: 13px; font-weight: 500;
+  font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.18s;
+}
+.modal-close:hover { background: rgba(124,111,247,0.22); color: var(--text); }
+
+/* ── Help button ── */
+.help-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); font-size: 13px; font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; font-family: 'Inter', sans-serif;
+}
+.help-btn:hover { color: var(--text); border-color: rgba(124,111,247,0.4); }
+
 /* ── Chat input bar ── */
 .chat-input-area {
   padding: 12px 24px 16px;
@@ -326,7 +412,10 @@ body {
 <!-- Header -->
 <div class="header">
   <span class="header-name">LangChain Agent</span>
-  <button class="new-btn" onclick="newChat()">New chat</button>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="help-btn" onclick="openModal()" title="About this agent">?</button>
+    <button class="new-btn" onclick="newChat()">New chat</button>
+  </div>
 </div>
 
 <!-- Home screen -->
@@ -349,6 +438,13 @@ body {
       <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
     </button>
   </div>
+
+  <div class="home-suggestions">
+    <button class="suggestion" onclick="suggest('Search the web for the latest AI news')">Latest AI news</button>
+    <button class="suggestion" onclick="suggest('What time and date is it right now?')">Current time &amp; date</button>
+    <button class="suggestion" onclick="suggest('Calculate 18% tip on a $63.40 bill')">Calculate a tip</button>
+    <button class="suggestion" onclick="suggest('Who is the current CEO of OpenAI?')">Who runs OpenAI?</button>
+  </div>
 </div>
 
 <!-- Chat view -->
@@ -365,9 +461,64 @@ body {
   </div>
 </div>
 
+<!-- Info modal -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal-card">
+    <div class="modal-title">
+      <div class="modal-title-orb"></div>
+      LangChain Multi-Tool Agent
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">What it is</div>
+      <div class="modal-text">A ReAct agent built with LangChain and LangGraph — it reasons through your question, decides which tools to use, runs them, and synthesizes the result into a response.</div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">Tools available</div>
+      <div class="modal-tools">
+        <span class="modal-tool-chip">🔍 Web Search — live DuckDuckGo results</span>
+        <span class="modal-tool-chip">🧮 Calculator — math expressions</span>
+        <span class="modal-tool-chip">🕐 Date &amp; Time — current time in any timezone</span>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">Memory</div>
+      <div class="modal-text">The agent remembers your full conversation. Ask follow-up questions, refer back to earlier answers, or drill deeper — it keeps the context.</div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">Tips</div>
+      <div class="modal-text">Ask multi-part questions. Combine tools — "search for today's ETH price and calculate how much $500 is worth." Start a new thread anytime with <strong style="color:rgba(200,195,255,0.9)">New chat</strong>.</div>
+    </div>
+
+    <button class="modal-close" onclick="closeModal()">Got it</button>
+  </div>
+</div>
+
 <script>
 let threadId = crypto.randomUUID();
 let streaming = false;
+
+// ── Modal ──
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modal')) closeModal();
+}
+
+// ── Suggestions ──
+function suggest(text) {
+  const input = document.getElementById('home-input');
+  input.value = text;
+  homeInputChange(input);
+  homeSubmit();
+}
 
 // Tool name mapping
 const TOOL_LABELS = {
