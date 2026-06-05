@@ -1,9 +1,12 @@
+from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_community.tools import DuckDuckGoSearchRun
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
 from .tools import calculator, get_current_datetime
+
+load_dotenv()
 
 SYSTEM_PROMPT = """You are a helpful AI assistant with access to tools.
 Use tools when they help you give accurate, up-to-date answers.
