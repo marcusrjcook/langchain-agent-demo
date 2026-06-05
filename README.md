@@ -78,7 +78,7 @@ curl -X POST http://localhost:8000/chat \
 ## Run Locally
 
 ```bash
-git clone https://github.com/marcusjco/langchain-agent-demo
+git clone https://github.com/marcusrjcook/langchain-agent-demo
 cd langchain-agent-demo
 
 python -m venv venv
@@ -102,7 +102,7 @@ API docs: http://localhost:8000/docs
 # On your EC2 instance (t2.micro, Ubuntu 22.04)
 sudo apt update && sudo apt install -y python3-pip python3-venv git
 
-git clone https://github.com/marcusjco/langchain-agent-demo
+git clone https://github.com/marcusrjcook/langchain-agent-demo
 cd langchain-agent-demo
 
 python3 -m venv venv && source venv/bin/activate
@@ -127,6 +127,6 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ## Related Projects
 
-- [SiteTrack RTLS Dashboard](https://github.com/marcusjco/rtls-dashboard) — 12 SQL-backed AI tools built on raw Anthropic API, same patterns this project abstracts
-- [Claude Agentic Query Agent](https://github.com/marcusjco/claude-agentic-query-agent) — raw tool use loop, history management from scratch
-- [RTLS Operations Automation](https://github.com/marcusjco/rtls-ops-automation) — 39-node n8n multi-agent orchestration
+- [SiteTrack RTLS Dashboard](https://github.com/marcusrjcook/rtls-dashboard) — 12 SQL-backed AI tools built on raw Anthropic API, same patterns this project abstracts
+- [Claude Agentic Query Agent](https://github.com/marcusrjcook/claude-agentic-query-agent) — raw tool use loop, history management from scratch
+- [RTLS Operations Automation](https://github.com/marcusrjcook/rtls-ops-automation) — 39-node n8n multi-agent orchestration
