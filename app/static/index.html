@@ -498,8 +498,19 @@ body {
 </div>
 
 <script>
-let threadId = crypto.randomUUID();
+let threadId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 let streaming = false;
+
+window.onerror = function(msg, src, line) {
+  streaming = false;
+  const msgs = document.getElementById('messages');
+  if (msgs) {
+    const d = document.createElement('div');
+    d.style.cssText = 'color:#f87171;padding:10px 16px;font-size:12px;font-family:monospace;';
+    d.textContent = 'JS Error: ' + msg + ' (line ' + line + ')';
+    msgs.appendChild(d);
+  }
+};
 
 // ── Modal ──
 function openModal() {
@@ -665,22 +676,26 @@ function addThinking() {
 
 // ── Send message ──
 async function sendMessage(text) {
-  streaming = true;
   const orb = document.getElementById('orb');
-
-  addMsg('user', text);
-  orb.classList.add('thinking');
-  addThinking();
-
-  let msgCtx = null;
-  let initialized = false;
+  streaming = true;
 
   try {
+    addMsg('user', text);
+    if (orb) orb.classList.add('thinking');
+    addThinking();
+
+    let msgCtx = null;
+    let initialized = false;
+
     const resp = await fetch('/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text, thread_id: threadId })
     });
+
+    if (!resp.ok) {
+      throw new Error('Server returned ' + resp.status);
+    }
 
     const reader = resp.body.getReader();
     const dec = new TextDecoder();
@@ -740,23 +755,23 @@ async function sendMessage(text) {
 
           if (d.error) {
             document.getElementById('thinking-msg')?.remove();
-            addMsg('assistant', 'Something went wrong. Try again.');
+            addMsg('assistant', 'Error from agent: ' + d.error);
           }
-        } catch {}
+        } catch(parseErr) {}
       }
     }
 
     msgCtx?.bubble.querySelector('.cursor')?.remove();
     document.getElementById('thinking-msg')?.remove();
 
-  } catch {
+  } catch(e) {
     document.getElementById('thinking-msg')?.remove();
-    addMsg('assistant', 'Connection error. Try again.');
+    addMsg('assistant', 'Error: ' + (e && e.message ? e.message : String(e)));
+  } finally {
+    if (orb) orb.classList.remove('thinking');
+    streaming = false;
+    setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
   }
-
-  orb.classList.remove('thinking');
-  streaming = false;
-  setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
 }
 </script>
 </body>
